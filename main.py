@@ -8,7 +8,7 @@ import os
 from datetime import datetime
 
 # Caminho do CSV no Google Drive
-caminho_csv = '/content/drive/MyDrive/processos.csv'
+caminho_csv = '/content/drive/MyDrive/Colab Notebooks/processos.csv'
 colunas = ["Processo", "Ano", "Tipo Documento", "Documento", "Prefácio"]
 
 def carregar_dados():
@@ -45,15 +45,15 @@ def gerar_numero(df, tipo):
     return numero_processo, numero_documento
 
 def adicionar_documento(tipo, prefacio, ano):
-    if not prefacio.strip():
-        return "Prefácio não pode estar vazio.", carregar_dados(), ""
+    if not tipo or not ano or not prefacio.strip():
+        return "Todos os campos devem ser preenchidos.", carregar_dados(), ""
 
     df = carregar_dados()
     numero_processo, numero_documento = gerar_numero(df, tipo)
     novo = pd.DataFrame([[numero_processo, int(ano), tipo, numero_documento, prefacio]], columns=colunas)
     df = pd.concat([df, novo], ignore_index=True)
     salvar_dados(df)
-    return f"Documento adicionado com sucesso!", df, ""
+    return f"✅ Documento adicionado com sucesso!", df, ""
 
 def listar_documentos(ano):
     df = carregar_dados()
@@ -88,10 +88,10 @@ def anos_disponiveis():
 def editar_prefacio(numero_processo, novo_prefacio):
     df = carregar_dados()
     if numero_processo not in df["Processo"].values:
-        return "Número de processo não encontrado.", df
+        return "⚠️ Número de processo não encontrado.", df
     df.loc[df["Processo"] == numero_processo, "Prefácio"] = novo_prefacio
     salvar_dados(df)
-    return "Prefácio atualizado com sucesso!", df
+    return "✏️ Prefácio atualizado com sucesso!", df
 
 # Interface Gradio
 custom_theme = gr.Theme(
@@ -104,9 +104,10 @@ custom_theme = gr.Theme(
 with gr.Blocks(theme=custom_theme, css="""
     body { background-color: #f9fafb; }
     .gr-box { border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); padding: 16px; }
-    .gr-button { font-weight: bold; }
-    .gr-input, .gr-textbox, .gr-dropdown { border-radius: 8px; }
+    .gr-button { font-weight: bold; padding: 10px 15px; font-size: 16px; }
+    .gr-input, .gr-textbox, .gr-dropdown { border-radius: 8px; font-size: 15px; }
     .gr-dataframe { background-color: #fff; border-radius: 8px; overflow: auto; }
+    label { font-weight: 600; }
 """) as app:
     gr.Markdown("""
     # 🗂️ Gestão de Documentos Oficiais
@@ -122,7 +123,11 @@ with gr.Blocks(theme=custom_theme, css="""
             msg_output = gr.Textbox(label="Status", interactive=False)
             tabela_output = gr.Dataframe(label="Lista Atualizada de Documentos")
 
-            adicionar_btn.click(adicionar_documento, inputs=[tipo_input, prefacio_input, ano_input_add], outputs=[msg_output, tabela_output, prefacio_input])
+            adicionar_btn.click(
+                fn=lambda tipo, prefacio, ano: adicionar_documento(tipo, prefacio, ano),
+                inputs=[tipo_input, prefacio_input, ano_input_add],
+                outputs=[msg_output, tabela_output, prefacio_input]
+            )
             tabela_output.value = carregar_dados()
 
         with gr.TabItem("📋 Listar e Remover") as tab_listar:
